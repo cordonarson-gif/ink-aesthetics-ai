@@ -1,23 +1,28 @@
-import { Link, useLocation } from "wouter";
+﻿import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Brush, GalleryHorizontalEnd, LayoutDashboard, ShieldAlert, Sparkles, UserCircle2 } from "lucide-react";
+import { Brush, GalleryHorizontalEnd, MessageSquareMore, ShieldAlert, Sparkles, UserCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocale } from "@/contexts/LocaleContext";
+import type { AppLocale } from "@/lib/i18n";
 import { toast } from "sonner";
+import { isAdminUser } from "@/lib/authz";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function TopNav() {
   const [loc] = useLocation();
   const { user, logout } = useAuth();
-  const isRoot = user?.id === "root";
+  const { locale, supportedLocales, setLocale, t } = useLocale();
+  const isRoot = isAdminUser(user);
 
   const items = [
-    { href: "/", label: "首页", icon: Sparkles },
-    { href: "/workspace", label: "AI 工作台", icon: Brush },
-    { href: "/gallery", label: "可计算画廊", icon: GalleryHorizontalEnd },
-    { href: "/dashboard", label: "SaaS 面板", icon: LayoutDashboard },
-    { href: "/profile", label: "个人主页", icon: UserCircle2 },
-    ...(isRoot ? [{ href: "/super-admin", label: "Root 大屏", icon: ShieldAlert }] : []),
+    { href: "/", label: t("nav.home"), icon: Sparkles },
+    { href: "/workspace", label: t("nav.workspace"), icon: Brush },
+    { href: "/gallery", label: t("nav.gallery"), icon: GalleryHorizontalEnd },
+    { href: "/forum", label: t("nav.forum"), icon: MessageSquareMore },
+    { href: "/profile", label: t("nav.profile"), icon: UserCircle2 },
+    ...(isRoot ? [{ href: "/super-admin", label: t("nav.admin"), icon: ShieldAlert }] : []),
   ];
 
   return (
@@ -56,40 +61,73 @@ export default function TopNav() {
 
         {user ? (
           <div className="flex items-center gap-2">
+            <LanguageSwitcher
+              locale={locale}
+              onChange={setLocale}
+              options={supportedLocales}
+            />
+            <NotificationBell />
             <Badge variant="outline" className="border-border/70 bg-card/60 text-foreground/80">
               {user.displayName}
             </Badge>
-            <Link href="/payment">
-              <Button variant="outline" className="border-border/70">
-                支付中心
-              </Button>
-            </Link>
             <Button
               variant="outline"
               className="border-border/70"
               onClick={() => {
-                logout();
-                toast.success("已退出登录");
+                void logout();
+                toast.success(t("nav.logoutSuccess"));
               }}
             >
-              退出
+              {t("nav.logout")}
             </Button>
           </div>
         ) : (
           <div className="flex items-center gap-2">
+            <LanguageSwitcher
+              locale={locale}
+              onChange={setLocale}
+              options={supportedLocales}
+            />
             <Link href="/login">
               <Button variant="outline" className="border-border/70">
-                登录
+                {t("nav.login")}
               </Button>
             </Link>
             <Link href="/register">
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
-                注册
+                {t("nav.register")}
               </Button>
             </Link>
           </div>
         )}
       </div>
     </header>
+  );
+}
+
+function LanguageSwitcher({
+  locale,
+  onChange,
+  options,
+}: {
+  locale: AppLocale;
+  onChange: (next: AppLocale) => void;
+  options: Array<{ code: AppLocale; label: string }>;
+}) {
+  return (
+    <label className="inline-flex items-center rounded-full border border-border/70 bg-card/60 px-3 py-1">
+      <select
+        value={locale}
+        onChange={(e) => onChange(e.target.value as AppLocale)}
+        className="bg-transparent text-xs text-foreground/80 outline-none"
+        aria-label="language-switcher"
+      >
+        {options.map((item) => (
+          <option key={item.code} value={item.code}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

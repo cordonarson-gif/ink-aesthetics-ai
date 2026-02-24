@@ -101,7 +101,7 @@ export async function generateFiveArtwork(rawPrompt: string): Promise<{ images: 
 }
 
 function svgToDataUrl(svg: string) {
-  const encoded = encodeURIComponent(svg).replace(/'/g, "%27").replace(/\"/g, "%22");
+  const encoded = encodeURIComponent(svg).replace(/'/g, "%27").replace(/"/g, "%22");
   return `data:image/svg+xml;charset=utf-8,${encoded}`;
 }
 

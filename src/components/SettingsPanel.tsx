@@ -1,19 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLocale } from "@/contexts/LocaleContext";
 
 export default function SettingsPanel() {
+  const { t } = useLocale();
+
   return (
     <Card className="border-border/70 bg-card/70">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">工作台状态</CardTitle>
+        <CardTitle className="text-lg">{t("settings.statusTitle")}</CardTitle>
         <div className="mt-1 text-sm text-muted-foreground">
-          已预留 DeepSeek 与 liblibai 的对接空位（后续可由后端接入）。
+          {t("settings.statusDesc")}
         </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 md:grid-cols-3">
-          <StatusChip title="DeepSeek" value="Slot" desc="一键优化提示词" />
-          <StatusChip title="liblibai" value="Slot" desc="4 图并行生成" />
-          <StatusChip title="评估模型" value="Slot" desc="参数化审美评分" />
+          <StatusChip title="DeepSeek" value="Slot" desc={t("settings.deepseekDesc")} />
+          <StatusChip title="liblibai" value="Slot" desc={t("settings.liblibaiDesc")} />
+          <StatusChip title={t("settings.evalTitle")} value="Slot" desc={t("settings.evalDesc")} />
         </div>
       </CardContent>
     </Card>

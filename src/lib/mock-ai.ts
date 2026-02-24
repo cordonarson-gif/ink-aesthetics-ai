@@ -134,6 +134,9 @@ export async function generateFiveImages(rawPrompt: string, settings?: AppSettin
           dataUrl: normalizeImageValue(value),
           params: randomParams(seed),
           createdAt: now,
+          generationTaskId: resp.generation_task_id || undefined,
+          candidateId: resp.candidate_ids?.[idx] || undefined,
+          candidateIndex: resp.candidate_indexes?.[idx] || idx + 1,
         };
       });
     } catch (e) {

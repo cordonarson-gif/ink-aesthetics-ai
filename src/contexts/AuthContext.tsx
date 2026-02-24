@@ -5,7 +5,7 @@ import {
   authChangePassword,
   authLoginOAuthMock,
   authLoginPassword,
-  authLoginSms,
+  authLoginEmail,
   authLogout,
   authMe,
   authRefresh,
@@ -19,7 +19,7 @@ const LS_ACCESS = "ink-aesthetics-ai.auth.access_token.v2";
 const LS_REFRESH = "ink-aesthetics-ai.auth.refresh_token.v2";
 const LS_SESSION = "ink-aesthetics-ai.auth.session.v1";
 
-type SmsPurpose = "login" | "register";
+type EmailPurpose = "login" | "register";
 
 type AuthContextValue = {
   ready: boolean;
@@ -29,21 +29,35 @@ type AuthContextValue = {
     username: string;
     displayName: string;
     password: string;
-    phone?: string;
+    email?: string;
   }) => Promise<AppUser>;
-  loginWithPassword: (input: { account: string; password: string }) => Promise<AppUser>;
-  sendPhoneCode: (input: { phone: string; purpose: SmsPurpose }) => Promise<string>;
-  registerWithPhone: (input: {
+  loginWithPassword: (input: {
+    account: string;
+    password: string;
+    captcha_token?: string;
+  }) => Promise<AppUser>;
+  sendEmailCode: (input: {
+    email: string;
+    purpose: EmailPurpose;
+    captcha_token?: string;
+  }) => Promise<string>;
+  registerWithEmail: (input: {
     username: string;
-    phone: string;
+    email: string;
     code: string;
     displayName: string;
     password: string;
+    captcha_token?: string;
   }) => Promise<AppUser>;
-  loginWithPhone: (input: { phone: string; code: string }) => Promise<AppUser>;
-  loginWithOAuth: (provider: Extract<AuthProvider, "qq" | "wechat">) => Promise<AppUser>;
+  loginWithEmail: (input: { email: string; code: string; captcha_token?: string }) => Promise<AppUser>;
+  loginWithOAuth: (
+    provider: Extract<AuthProvider, "qq" | "wechat">,
+  ) => Promise<AppUser>;
   updateProfile: (patch: { displayName?: string }) => Promise<AppUser>;
-  changePassword: (input: { oldPassword: string; newPassword: string }) => Promise<void>;
+  changePassword: (input: {
+    oldPassword: string;
+    newPassword: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -53,20 +67,24 @@ function toAppUser(u: {
   id: string;
   username: string;
   display_name: string;
-  phone?: string | null;
+  email?: string | null;
   created_at: string;
 }): AppUser {
   return {
     id: u.id,
     username: u.username,
     displayName: u.display_name || u.username,
-    phone: u.phone || undefined,
+    email: u.email || undefined,
     password: "",
     createdAt: u.created_at,
   };
 }
 
-function saveTokens(access: string | null, refresh: string | null, userId: string | null) {
+function saveTokens(
+  access: string | null,
+  refresh: string | null,
+  userId: string | null,
+) {
   if (access) localStorage.setItem(LS_ACCESS, access);
   else localStorage.removeItem(LS_ACCESS);
   if (refresh) localStorage.setItem(LS_REFRESH, refresh);
@@ -85,7 +103,10 @@ function getTokens() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<AppUser | null>(null);
-  const [tokens, setTokens] = useState<{ access: string | null; refresh: string | null }>({
+  const [tokens, setTokens] = useState<{
+    access: string | null;
+    refresh: string | null;
+  }>({
     access: null,
     refresh: null,
   });
@@ -151,28 +172,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       users: user ? [user] : [],
       registerWithPassword: async () => {
-        throw new Error("当前注册仅支持手机号 + 验证码 + 密码。");
+        throw new Error("当前注册仅支持邮箱 + 验证码 + 密码。");
       },
-      loginWithPassword: async ({ account, password }) => {
-        const pair = await authLoginPassword(loadSettings(), { account, password });
-        return await applyTokenPair(pair);
-      },
-      sendPhoneCode: async ({ phone, purpose }) => {
-        const res = await authSendCode(loadSettings(), { phone, purpose });
-        return res.dev_code || "";
-      },
-      registerWithPhone: async ({ username, phone, code, displayName, password }) => {
-        const pair = await authRegister(loadSettings(), {
-          username,
-          phone,
-          code,
+      loginWithPassword: async ({ account, password, captcha_token }) => {
+        const pair = await authLoginPassword(loadSettings(), {
+          account,
           password,
-          display_name: displayName,
+          captcha_token,
         });
         return await applyTokenPair(pair);
       },
-      loginWithPhone: async ({ phone, code }) => {
-        const pair = await authLoginSms(loadSettings(), { phone, code });
+      sendEmailCode: async ({ email, purpose, captcha_token }) => {
+        const res = await authSendCode(loadSettings(), {
+          email,
+          purpose,
+          captcha_token,
+        });
+        return res.dev_code || "";
+      },
+      registerWithEmail: async ({
+        username,
+        email,
+        code,
+        displayName,
+        password,
+        captcha_token,
+      }) => {
+        const pair = await authRegister(loadSettings(), {
+          username,
+          email,
+          code,
+          password,
+          display_name: displayName,
+          captcha_token,
+        });
+        return await applyTokenPair(pair);
+      },
+      loginWithEmail: async ({ email, code, captcha_token }) => {
+        const pair = await authLoginEmail(loadSettings(), { email, code, captcha_token });
         return await applyTokenPair(pair);
       },
       loginWithOAuth: async (provider) => {
@@ -183,7 +220,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!tokens.access || !user) throw new Error("未登录。");
         const name = patch.displayName?.trim();
         if (!name) throw new Error("昵称不能为空。");
-        const me = await authUpdateMe(loadSettings(), tokens.access, { display_name: name });
+        const me = await authUpdateMe(loadSettings(), tokens.access, {
+          display_name: name,
+        });
         const next = toAppUser(me);
         setUser(next);
         saveTokens(tokens.access, tokens.refresh, next.id);
@@ -203,7 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       },
     }),
-    [ready, user, tokens]
+    [ready, user, tokens],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

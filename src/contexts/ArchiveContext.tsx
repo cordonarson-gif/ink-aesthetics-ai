@@ -14,18 +14,20 @@ type ArchiveContextValue = {
 
 const ArchiveContext = createContext<ArchiveContextValue | null>(null);
 
+function loadArchiveStore(): ArchiveStore {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as ArchiveStore;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export function ArchiveProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [store, setStore] = useState<ArchiveStore>({});
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) setStore(JSON.parse(raw));
-    } catch {
-      // ignore
-    }
-  }, []);
+  const [store, setStore] = useState<ArchiveStore>(loadArchiveStore);
 
   useEffect(() => {
     try {

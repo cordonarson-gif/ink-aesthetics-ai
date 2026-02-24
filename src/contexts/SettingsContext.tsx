@@ -12,11 +12,7 @@ type SettingsContextValue = {
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettingsState] = useState<AppSettings>(defaultSettings);
-
-  useEffect(() => {
-    setSettingsState(loadSettings());
-  }, []);
+  const [settings, setSettingsState] = useState<AppSettings>(loadSettings);
 
   useEffect(() => {
     saveSettings(settings);
